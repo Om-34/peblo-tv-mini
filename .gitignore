@@ -1,0 +1,11 @@
+*.pyc
+*.tsbuildinfo
+.coverage
+.env
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+dist/
+node_modules/
+storage/catalogues/*
+storage/media/*

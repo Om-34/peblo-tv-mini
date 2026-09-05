@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: peblo
+      POSTGRES_PASSWORD: peblo
+      POSTGRES_DB: peblo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peblo -d peblo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://peblo:peblo@db:5432/peblo
+      SECRET_KEY: ${SECRET_KEY:-local-development-secret}
+      STORAGE_ROOT: /app/storage
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174
+      SEED_FILE: /app/seed/seed_shows.json
+      REFERENCE_FILE: /app/seed/reference.json
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cms:
+    build:
+      context: .
+      dockerfile: cms/Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  viewer:
+    build:
+      context: .
+      dockerfile: viewer/Dockerfile
+    ports:
+      - "5174:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

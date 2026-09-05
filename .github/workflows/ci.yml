@@ -1,0 +1,40 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r backend/requirements.txt
+      - run: ruff check backend/app backend/tests
+      - run: pytest -q backend/tests
+  cms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: cd cms && npm install && npm run lint && npm run build
+  viewer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: cd viewer && npm install && npm run lint && npm run build
+  images:
+    runs-on: ubuntu-latest
+    needs: [backend, cms, viewer]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t peblo-api .
+      - run: docker build -f cms/Dockerfile -t peblo-cms .
+      - run: docker build -f viewer/Dockerfile -t peblo-viewer .
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: images
+    steps:
+      - run: echo "Production deployment would promote the immutable images to the target container platform here."
